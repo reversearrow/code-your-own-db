@@ -2,6 +2,8 @@ package db0302
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -84,9 +86,41 @@ func (p *Parser) parseValue(out *Cell) error {
 	}
 }
 
-func (p *Parser) parseString(out *Cell) error
+func (p *Parser) parseString(out *Cell) error {
+	return fmt.Errorf("invalid string")
+}
 
-func (p *Parser) parseInt(out *Cell) (err error)
+func (p *Parser) parseInt(out *Cell) (err error) {
+	start := p.pos
+	for {
+		if p.isEnd() {
+			break
+		}
+		next := p.buf[p.pos+1]
+		if isDigit(next) {
+			p.pos++
+			continue
+		}
+		p.pos++
+		break
+	}
+	end := p.pos
+	digits := p.buf[start:end]
+	digitsInt, err := strconv.ParseInt(digits, 10, 64)
+	if err != nil {
+		return err
+	}
+	out.Type = TypeI64
+	out.I64 = digitsInt
+	return nil
+}
+
+func (p *Parser) next() byte {
+	if !p.isEnd() {
+		return p.buf[p.pos+1]
+	}
+	return 0
+}
 
 func (p *Parser) isEnd() bool {
 	p.skipSpaces()
