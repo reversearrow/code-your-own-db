@@ -87,7 +87,31 @@ func (p *Parser) parseValue(out *Cell) error {
 }
 
 func (p *Parser) parseString(out *Cell) error {
-	return fmt.Errorf("invalid string")
+	out.Type = TypeStr
+	quote := p.buf[p.pos]
+	p.pos++
+	for {
+		if p.isEnd() {
+			return fmt.Errorf("missing closing quote")
+		}
+		if p.buf[p.pos] == '\\' {
+			p.pos++
+			if !p.isEnd() {
+				out.Str = append(out.Str, p.buf[p.pos])
+				p.pos++
+			} else {
+				return fmt.Errorf("missing closing quote")
+			}
+		} else if p.buf[p.pos] == quote {
+			p.pos++
+			return nil
+		} else {
+			out.Str = append(out.Str, p.buf[p.pos])
+			p.pos++
+		}
+	}
+
+	return fmt.Errorf("missing closing quote")
 }
 
 func (p *Parser) parseInt(out *Cell) (err error) {
