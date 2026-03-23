@@ -2,6 +2,7 @@ package db0303
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -147,11 +148,70 @@ func (p *Parser) parseInt(out *Cell) (err error) {
 	return nil
 }
 
-func (p *Parser) parseEqual(out *NamedCell) error
+func (p *Parser) parseEqual(out *NamedCell) error {
+	var ok bool
+	out.column, ok = p.tryName()
+	if !ok {
+		return errors.New("expect column")
+	}
+	fmt.Println("out column", out.column)
+	if !p.tryPunctuation("=") {
+		return errors.New("expect =")
+	}
+	return p.parseValue(&out.value)
+}
 
-func (p *Parser) parseSelect(out *StmtSelect) error
+func (p *Parser) parseSelect(out *StmtSelect) error {
+	if !p.tryKeyword("SELECT") {
+		return errors.New("expect keyword")
+	}
+	for !p.tryKeyword("FROM") {
+		if len(out.cols) > 0 && !p.tryPunctuation(",") {
+			return errors.New("expect comma")
+		}
+		if name, ok := p.tryName(); ok {
+			out.cols = append(out.cols, name)
+		} else {
+			return errors.New("expect column")
+		}
+	}
+	if len(out.cols) == 0 {
+		return errors.New("expect column list")
+	}
+	var ok bool
+	if out.table, ok = p.tryName(); !ok {
+		return errors.New("expect table name")
+	}
+	return p.parseWhere(&out.keys)
+}
 
-func (p *Parser) parseWhere(out *[]NamedCell) error
+func (p *Parser) parseWhere(out *[]NamedCell) error {
+	fmt.Println("WHERE", p.buf[p.pos:])
+	if !p.tryKeyword("WHERE") {
+		return errors.New("expect keyword")
+	}
+	fmt.Println("WHERE", p.buf[p.pos:])
+	fmt.Println("going to parse equal")
+
+	for !p.tryPunctuation(";") {
+		var c NamedCell
+		if err := p.parseEqual(&c); err != nil {
+			return err
+		}
+		*out = append(*out, c)
+		if !p.isEnd() {
+			if p.buf[p.pos] == ';' {
+				p.pos++
+				break
+			}
+			if !p.tryKeyword("and") {
+				return errors.New("expect keyword")
+			}
+		}
+	}
+
+	return nil
+}
 
 func (p *Parser) isEnd() bool {
 	p.skipSpaces()
